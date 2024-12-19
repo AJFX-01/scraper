@@ -98,81 +98,169 @@ if len(driver.get_cookies()) == 0:
 
 # Main loop to handle code retrieval, sending email, and scraping data
 browser_trusted = False  # Flag to check if browser has been trusted
+authentication_completed = False  # Flag to track if the authentication is complete
 
 while True:
     try:
-        # Wait for the verification code to appear
-        code_element = wait.until(
-            EC.presence_of_element_located((By.CLASS_NAME, "verification-code"))
-        )
-        code = code_element.text
-        print(f"Verification code retrieved: {code}")
+        # Check if we are on the authenticated page by inspecting the URL or specific element
+        current_url = driver.current_url
+        if "https://learn.uwaterloo.ca/d2l/home" in current_url or driver.find_elements(By.ID, "dropdown-button"):
+            print("Already authenticated, proceeding to dropdown...")
+            dropdown_button = wait.until(
+                EC.element_to_be_clickable((By.ID, "d2l-uid-22"))
+            )
+            dropdown_button.click()
 
-        # Send the code via Mailgun API
-        send_email_via_mailgun(code)
+            # Scrape data from the dropdown
+            items = driver.find_elements(By.CSS_SELECTOR, "ul.vui-list li.dl2-datalist-item")
+            for item in items:
+                try:
+                    title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
+                    due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
+                    print(f"Title: {title}, Due Date: {due_date}")
+                except NoSuchElementException:
+                    print("Item not found.")
+                    continue
 
-        # Wait for the "Trust This Browser" button to appear if not already trusted
-        if not browser_trusted:
-            try:
-                trust_browser_button = wait.until(
-                    EC.presence_of_element_located((By.ID, "trust-browser-button"))
-                )
-                trust_browser_button.click()
-                print("Browser trusted, proceeding...")
-                browser_trusted = True  # Mark the browser as trusted
-
-            except TimeoutException:
-                print("Trust browser button not found or expired. Proceeding to the next step.")
-        
-        # Now we proceed directly to the dropdown button
-        dropdown_button = wait.until(
-            EC.element_to_be_clickable((By.ID, "d2l-uid-22"))
-        )
-        dropdown_button.click()
-
-        # Scrape data from the dropdown
-        items = driver.find_elements(By.CSS_SELECTOR, "ul.vui-list li.dl2-datalist-item")
-        for item in items:
-            try:
-                title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
-                due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
-                print(f"Title: {title}, Due Date: {due_date}")
-            except NoSuchElementException:
-                print("Item not found.")
-                continue
-
-        last_item = items[-1]
-        try:
-            fuzzy_date = last_item.find_element(
-                By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
-            # Parse the date to ensure it's the same day
-            last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
-            today = datetime.now().date()
-
-            if last_date != today:
-                print("Last item is not from today. Stopping load more.")
-                break
-        except NoSuchElementException:
-            print("No fuzzy date found in the last item. Stopping load more.")
-            break
-
-        # Check if "Load More" button exists and handle it
-        load_more_button = driver.find_element(By.CLASS_NAME, "d2l-load-more")
-        if load_more_button:
             last_item = items[-1]
-            last_date = last_item.find_element(By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
-            if "December 14" in last_date:  # Replace "December 14" with the desired date format
-                load_more_button.click()
+            try:
+                fuzzy_date = last_item.find_element(
+                    By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+                # Parse the date to ensure it's the same day
+                last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
+                today = datetime.now().date()
 
-    except TimeoutException:
-        # Timeout after waiting for the Trust button. Now check for "Try Again" to regenerate the code
-        print("Code expired or 'Trust This Browser' button not found. Checking 'Try Again' button.")
-        try_again_button = wait.until(
-            EC.presence_of_element_located((By.CLASS_NAME, "try-again-button"))
-        )
-        print("Code expired, generating a new one...")
-        try_again_button.click()
-        continue  # Retry the process after clicking "Try Again" to get a new code
+                if last_date != today:
+                    print("Last item is not from today. Stopping load more.")
+                    break
+            except NoSuchElementException:
+                print("No fuzzy date found in the last item. Stopping load more.")
+                break
+
+            # Check if "Load More" button exists and handle it
+            load_more_button = driver.find_element(By.CLASS_NAME, "d2l-load-more")
+            if load_more_button:
+                last_item = items[-1]
+                last_date = last_item.find_element(By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+                if "December 14" in last_date:  # Replace "December 14" with the desired date format
+                    load_more_button.click()
+                    browser_trusted = True  # Mark the browser as trusted
+            authentication_completed = True  # Authentication is already done
+        else:
+            # Wait for the verification code to appear (if not authenticated)
+            code_element = wait.until(
+                EC.presence_of_element_located((By.CLASS_NAME, "verification-code"))
+            )
+            code = code_element.text
+            print(f"Verification code retrieved: {code}")
+
+            # Send the code via Mailgun API
+            send_email_via_mailgun(code)
+
+            # Wait for the "Trust This Browser" button to appear if not already trusted
+            if not browser_trusted:
+                try:
+                    trust_browser_button = wait.until(
+                        EC.presence_of_element_located((By.ID, "trust-browser-button"))
+                    )
+                    trust_browser_button.click()
+                    print("Browser trusted, proceeding...")
+
+                    dropdown_button = wait.until(
+                        EC.element_to_be_clickable((By.ID, "d2l-uid-22"))
+                    )
+                    dropdown_button.click()
+
+                    # Scrape data from the dropdown
+                    items = driver.find_elements(By.CSS_SELECTOR, "ul.vui-list li.dl2-datalist-item")
+                    for item in items:
+                        try:
+                            title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
+                            due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
+                            print(f"Title: {title}, Due Date: {due_date}")
+                        except NoSuchElementException:
+                            print("Item not found.")
+                            continue
+
+                    last_item = items[-1]
+                    try:
+                        fuzzy_date = last_item.find_element(
+                            By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+                        # Parse the date to ensure it's the same day
+                        last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
+                        today = datetime.now().date()
+
+                        if last_date != today:
+                            print("Last item is not from today. Stopping load more.")
+                            break
+                    except NoSuchElementException:
+                        print("No fuzzy date found in the last item. Stopping load more.")
+                        break
+
+                    # Check if "Load More" button exists and handle it
+                    load_more_button = driver.find_element(By.CLASS_NAME, "d2l-load-more")
+                    if load_more_button:
+                        last_item = items[-1]
+                        last_date = last_item.find_element(By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+                        if "December 14" in last_date:  # Replace "December 14" with the desired date format
+                            load_more_button.click()
+                            browser_trusted = True  # Mark the browser as trusted
+
+                except TimeoutException:
+                    print("Trust browser button not found or expired. Proceeding to the next step.")
+
+        #If authentication is completed, proceed to dropdown button
+        if authentication_completed:
+            dropdown_button = wait.until(
+                EC.element_to_be_clickable((By.ID, "d2l-uid-22"))
+            )
+            dropdown_button.click()
+
+            # Scrape data from the dropdown
+            items = driver.find_elements(By.CSS_SELECTOR, "ul.vui-list li.dl2-datalist-item")
+            for item in items:
+                try:
+                    title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
+                    due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
+                    print(f"Title: {title}, Due Date: {due_date}")
+                except NoSuchElementException:
+                    print("Item not found.")
+                    continue
+
+            last_item = items[-1]
+            try:
+                fuzzy_date = last_item.find_element(
+                    By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+                # Parse the date to ensure it's the same day
+                last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
+                today = datetime.now().date()
+
+                if last_date != today:
+                    print("Last item is not from today. Stopping load more.")
+                    break
+            except NoSuchElementException:
+                print("No fuzzy date found in the last item. Stopping load more.")
+                break
+
+            # Check if "Load More" button exists and handle it
+            load_more_button = driver.find_element(By.CLASS_NAME, "d2l-load-more")
+            if load_more_button:
+                last_item = items[-1]
+                last_date = last_item.find_element(By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+                if "December 14" in last_date:  # Replace "December 14" with the desired date format
+                    load_more_button.click()
+
+        # If the code expired, check for the "Try Again" button to regenerate the code
+        try:
+            try_again_button = wait.until(
+                EC.presence_of_element_located((By.CLASS_NAME, "try-again-button"))
+            )
+            print("Code expired, generating a new one...")
+            try_again_button.click()
+            continue  # Retry the process after clicking "Try Again" to get a new code
+
+        except TimeoutException:
+            print("No 'Try Again' button found. Proceeding with next steps.")
 
     except Exception as e:
         print(f"An error occurred: {e}")
