@@ -4,7 +4,9 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
@@ -37,8 +39,6 @@ def send_email_via_mailgun(otp_code):
     except Exception as e:
         print(f"An error occurred while sending email: {e}")
 
-
-
 # Selenium Configuration
 driver = webdriver.Chrome()
 wait = WebDriverWait(driver, 30)
@@ -64,7 +64,7 @@ password_input.send_keys(PASSWORD)
 login_button = driver.find_element(By.ID, "submitButton")
 login_button.click()
 
-# Main loop to handle code retrieval and expiration
+# Main loop to handle code retrieval, sending email, and scraping data
 while True:
     try:
         # Wait for the verification code to appear
@@ -84,9 +84,173 @@ while True:
         try_again_button.click()
         print("Code expired, generating a new one...")
 
+        # Click the dropdown button
+        dropdown_button = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.ID, "d2l-uid-22"))
+        )
+        dropdown_button.click()
+
+        # Scrape data from the dropdown
+        items = driver.find_elements(By.CSS_SELECTOR, "ul.vui-list li.dl2-datalist-item")
+        for item in items:
+            try:
+                title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
+                due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
+                print(f"Title: {title}, Due Date: {due_date}")
+            except NoSuchElementException:
+                print("Item not found.")
+                continue
+        last_item = items[-1]
+        try:
+            fuzzy_date = last_item.find_element(
+                By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+            # Parse the date to ensure it's the same day
+            last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
+            today = datetime.now().date()
+
+            if last_date != today:
+                print("Last item is not from today. Stopping load more.")
+                break
+        except NoSuchElementException:
+            print("No fuzzy date found in the last item. Stopping load more.")
+            break
+        # Check if "Load More" button exists and handle it
+        load_more_button = driver.find_element(By.CLASS_NAME, "d2l-load-more")
+        if load_more_button:
+            last_item = items[-1]
+            last_date = last_item.find_element(By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+            if "December 14" in last_date:  # Replace "December 14" with the desired date format
+                load_more_button.click()
+
     except Exception as e:
         print(f"An error occurred: {e}")
         break
 
 # Clean up
 driver.quit()
+
+# def send_email_via_mailgun(otp_code):
+#     """Send email via Mailgun API."""
+#     try:
+#         response = requests.post(
+#             MAILGUN_API_URL,
+#             auth=("api", MAILGUN_API_KEY),
+#             data={
+#                 "from": FROM_EMAIL,
+#                 "to": [TO_EMAIL],
+#                 "subject": "Your Verification Code",
+#                 "text": f"The verification code is: {otp_code}"
+#             }
+#         )
+#         if response.status_code == 200:
+#             print(f"Verification code sent to {TO_EMAIL}")
+#         else:
+#             print(f"Failed to send email: {response.status_code} - {response.text}")
+#     except Exception as e:
+#         print(f"An error occurred while sending email: {e}")
+
+# def scrape_data(driver, wait):
+#     """Scrape data from the dropdown."""
+#     scraped_items = []
+
+#     # Click the dropdown button to reveal the list
+#     dropdown_button = wait.until(EC.element_to_be_clickable((By.ID, "d2l-uid-22")))
+#     dropdown_button.click()
+
+#     while True:
+#         # Get the list of items in the dropdown
+#         list_items = wait.until(
+#             EC.presence_of_all_elements_located(
+#                 (By.CSS_SELECTOR, "ul.vui-list > li.dl2-datalist-item"))
+#         )
+        
+#         for item in list_items:
+#             try:
+#                 # Extract title and due date
+#                 title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
+#                 due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
+#                 scraped_items.append({"title": title, "due_date": due_date})
+#             except NoSuchElementException:
+#                 continue
+
+#         # Check if the last item's date matches today's date
+#         last_item = list_items[-1]
+#         try:
+#             fuzzy_date = last_item.find_element(
+#                 By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+#             # Parse the date to ensure it's the same day
+#             last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
+#             today = datetime.now().date()
+
+#             if last_date != today:
+#                 print("Last item is not from today. Stopping load more.")
+#                 break
+#         except NoSuchElementException:
+#             print("No fuzzy date found in the last item. Stopping load more.")
+#             break
+
+#         # Click "Load More" button if available
+#         try:
+#             load_more_button = driver.find_element(By.CLASS_NAME, "d2l-load-more")
+#             load_more_button.click()
+#             print("Clicked Load More button...")
+#             WebDriverWait(driver, 10).until(
+#                 EC.staleness_of(list_items[-1]))  # Wait for new items to load
+#         except NoSuchElementException:
+#             print("No Load More button found. Stopping...")
+#             break
+
+#     return scraped_items
+
+
+# # Selenium Configuration
+# driver = webdriver.Chrome()
+# wait = WebDriverWait(driver, 30)
+
+# # Login to the web app
+# driver.get("https://learn.uwaterloo.ca/")
+
+# # Input username
+# username_input = driver.find_element(By.ID, "userNameInput")
+# username_input.send_keys(USERNAME)
+
+# # Click the "Next" button
+# next_button = driver.find_element(By.ID, "nextButton")
+# next_button.click()
+
+# # Wait for the password input to appear
+# password_input = WebDriverWait(driver, 20).until(
+#     EC.presence_of_element_located((By.ID, "passwordInput"))
+# )
+# password_input.send_keys(PASSWORD)
+
+# # Click the login button
+# login_button = driver.find_element(By.ID, "submitButton")
+# login_button.click()
+
+# # Main loop to handle code retrieval and expiration
+# while True:
+#     try:
+#         # Wait for the verification code to appear
+#         code_element = wait.until(
+#             EC.presence_of_element_located((By.CLASS_NAME, "verification-code"))
+#         )
+#         code = code_element.text
+#         print(f"Verification code retrieved: {code}")
+
+#         # Send the code via Mailgun API
+#         send_email_via_mailgun(code)
+
+#         # Wait for the "Try Again" button to appear, indicating expiration
+#         try_again_button = wait.until(
+#             EC.presence_of_element_located((By.CLASS_NAME, "try-again-button"))
+#         )
+#         try_again_button.click()
+#         print("Code expired, generating a new one...")
+
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+#         break
+
+# # Clean up
+# driver.quit()
