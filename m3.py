@@ -44,9 +44,10 @@ def send_email_via_mailgun(otp_code):
     except Exception as e:
         print(f"An error occurred while sending email: {e}")
 
-# Selenium Configuration
-driver = webdriver.Chrome()
-wait = WebDriverWait(driver, 50)
+options = webdriver.ChromeOptions()
+options.headless = False
+driver = webdriver.Chrome(options=options)
+wait = WebDriverWait(driver, 60)
 
 # Login to the web app
 driver.get("https://learn.uwaterloo.ca/")
@@ -68,3 +69,108 @@ password_input.send_keys(PASSWORD)
 # Click the login button
 login_button = driver.find_element(By.ID, "submitButton")
 login_button.click()
+
+while True:
+    try:
+        # Wait for the verification code to appear
+        code_element = wait.until(
+            EC.presence_of_element_located((By.CLASS_NAME, "verification-code"))
+        )
+        code = code_element.text
+        print(f"Verification code retrieved: {code}")
+        trust_browser_button = wait.until(
+            EC.presence_of_element_located((By.ID, "trust-browser-button"))
+        )
+        trust_browser_button.click()
+        print("Browser trusted, proceeding...")
+
+        # Retry logic for finding the dropdown button
+        dropdown_found = False
+        while not dropdown_found:
+            try:
+    # Wait for the presence of all the div elements containing the shadow DOM
+                div_elements = wait.until(
+                      EC.presence_of_all_elements_located(
+                          (By.CSS_SELECTOR, "div.d2l-navigation-s-notification"))
+                  )
+
+                  # Iterate through each div to find the specific button inside the shadow DOM
+                for div_element in div_elements:
+                    try:
+                        # Locate the d2l-navigation-dropdown-button-icon inside the div
+                        d2l_button_element = div_element.find_element(
+                            By.CSS_SELECTOR, "d2l-navigation-dropdown-button-icon")
+                        shadow_root = get_shadow_root(driver, d2l_button_element)
+
+                        # Try to locate the button with a unique ID (e.g., 'd2l-uid-191')
+                        button_id = shadow_root.find_element(
+                            By.CSS_SELECTOR, "button").get_attribute("id")
+                        print(f"Found button with id: {button_id}")
+                        # Locate the button using the id directly
+                        if button_id == "d2l-uid-22":  # Replace with the appropriate id or logic
+                            button = shadow_root.find_element(
+                                By.ID, button_id)
+                            button.click()
+                            print(f"Button {button_id} clicked successfully!")
+                            dropdown_found = True  # Stop after clicking the first matching button (remove if you want to continue)
+                            break  # Stop after clicking the first matching button (remove if you want to continue)
+
+                    except Exception as inner_e:
+                                  # Handle case where the button or shadow root is not found in this specific div
+                        print(
+                            f"Error interacting with div: {inner_e}")
+                        continue
+
+            except Exception as e:
+                error_type = type(e).__name__
+                print(f"An error of type '{error_type}' occurred: {e}")
+
+        # Scrape data from the dropdown
+        items = driver.find_elements(By.CLASS_NAME, "ul.vui-list li.dl2-datalist-item")
+        print("found items")
+        for item in items:
+            try:
+                title = item.find_element(
+                    By.CSS_SELECTOR, "a.dl2-link").text
+                due_date = item.find_element(
+                    By.CSS_SELECTOR, "span.vui-emphasis").text
+                print(f"Title: {title}, Due Date: {due_date}")
+            except NoSuchElementException:
+                print("Item not found.")
+                continue
+
+        # Check the last item's fuzzy date
+        last_item = items[-1]
+        try:
+            fuzzy_date = last_item.find_element(
+                By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+            last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
+            today = datetime.now().date()
+
+            if last_date != today:
+                print("Last item is not from today. Stopping load more.")
+                break
+        except NoSuchElementException:
+            print("No fuzzy date found in the last item. Stopping load more.")
+            break
+
+        # Handle "Load More" button
+        try:
+            load_more_button = driver.find_element(By.CLASS_NAME, "d2l-load-more")
+            if load_more_button:
+                load_more_button.click()
+        except NoSuchElementException:
+            print("No 'Load More' button found. Ending loop.")
+            break
+
+    except NoSuchElementException as e:
+        print(f"An explicit element error occurred: {e}")
+        break  # Stop the loop as the required element isn't found
+
+    except Exception as e:
+        error_type = type(e).__name__
+        print(f"An error of type '{error_type}' occurred: {e}")
+        
+        # Optionally log the full stack trace
+        print("\nStack Trace:")
+        traceback.print_exc()

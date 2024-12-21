@@ -49,7 +49,7 @@ driver = webdriver.Chrome()
 wait = WebDriverWait(driver, 50)
 
 # Login to the web app
-driver.get("https://learn.uwaterloo.ca/")
+driver.get("https://learn.uwaterloo.ca/d2l/home")
 
 # Input username
 username_input = driver.find_element(By.ID, "userNameInput")
@@ -89,21 +89,29 @@ while True:
         while not dropdown_found:
             try:
     # Wait for the presence of all the div elements containing the shadow DOM
-                div_elements = WebDriverWait(driver, 10).until(
-                      EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.d2l-navigation-s-notification"))
-                  )
+                try:
+                    div_elements = wait.until(
+                        EC.presence_of_all_elements_located((
+                            By.CSS_SELECTOR, "div.d2l-navigation-s-notification"))
+                    )
+                except TimeoutException:
+                    print("Timeout waiting for div elements with shadow DOM")
+                    continue
+                except NoSuchElementException:
+                    print("No div elements with shadow DOM found")
+                    continue
 
                   # Iterate through each div to find the specific button inside the shadow DOM
                 for div_element in div_elements:
                     try:
                         # Locate the d2l-navigation-dropdown-button-icon inside the div
-                        d2l_button_element = div_element.find_element(By.CSS_SELECTOR, "d2l-navigation-dropdown-button-icon")
-
-                        # Access the shadow root from the d2l-navigation-dropdown-button-icon element
+                        d2l_button_element = div_element.find_element(
+                            By.CSS_SELECTOR, "d2l-navigation-dropdown-button-icon")
                         shadow_root = get_shadow_root(driver, d2l_button_element)
 
                         # Try to locate the button with a unique ID (e.g., 'd2l-uid-191')
-                        button_id = shadow_root.find_element(By.CSS_SELECTOR, "button").get_attribute("id")
+                        button_id = shadow_root.find_element(
+                            By.CSS_SELECTOR, "button").get_attribute("id")
                         print(f"Found button with id: {button_id}")
 
                         # Locate the button using the id directly (you can use button_id to target specific buttons)
@@ -116,8 +124,8 @@ while True:
 
                     except Exception as inner_e:
                                   # Handle case where the button or shadow root is not found in this specific div
-                      print(f"Error interacting with div: {inner_e}")
-                      continue
+                        print(f"Error interacting with div: {inner_e}")
+                        continue
 
             except Exception as e:
                 error_type = type(e).__name__
@@ -126,12 +134,59 @@ while True:
         # Scrape data from the dropdown
         try:
 
-            dropdown_content = wait.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "d2l-dropdown-content"))
-            )
-            print("Dropdown content found.")
+            try:
+                dropdown_content = wait.until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "d2l-dropdown-content"))
+                )
+                print(dropdown_content.get_attribute("innerHTML"))
+                print("Dropdown content found.")
+                # div1_class = dropdown_content.find_element(By.CLASS_NAME, "d2l-placeholder")
+                # print(div1_class.get_attribute("innerHTML"))
+                # print("Dropdown div 1 content found.")
+                div2_class = wait.until(
+                    EC.presence_of_element_located
+                                        ((By.ID, "AB_DL_PH_Grades"))
+                )
+                print(div2_class.get_attribute("innerHTML"))
+                print("Dropdown div2 content found.")
+                div3_class = div2_class.find_element(By.CLASS_NAME, "d2l-datalist-container")
+                print("Dropdown div 3 content found.")
+                items = div2_class.find_element(
+                    By.CLASS_NAME, "vui-list")
+                print(items.get_attribute("innerHTML"))
+                print("Items found.")
+
+                # Locate all <li> elements within the <ul>
+                li_tags = items.find_elements(By.CLASS_NAME, "d2l-datalist-item")
+                print(f"Found {len(li_tags)} items."),
+
+                # Extract data for each item
+                for li_tag in li_tags:
+                    try:
+                        title = li_tag.find_element(By.CLASS_NAME, "d2l-link").text
+                        due_date = li_tag.find_element(By.CLASS_NAME, "vui-emphasis").text
+                        print(f"Title: {title}, Due Date: {due_date}")
+                    except NoSuchElementException as e:
+                        print(f"Error extracting item details: {e}")
+                        continue
+            except TimeoutException:
+                print("Dropdown content not found.")
+                break
+            except NoSuchElementException:
+                print("No dropdown content found.")
+                break
             # Scrape data from the dropdown
-            items = driver.find_elements(By.CSS_SELECTOR, "ul.d2l-datalist li.dl2-datalist-item")
+            try:
+                items = dropdown_content.find_element(
+                    By.CSS_SELECTOR, "ul.d2l-datalist li.dl2-datalist-item")
+                print(items.get_attribute("outerHTML"))
+                print("Items found.")
+            except TimeoutException:
+                print("No items found.")
+                break
+            except NoSuchElementException:
+                print("No items found.")
+                break
             print(items)
             # Check if items are found
             if not items:
