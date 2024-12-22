@@ -1,3 +1,4 @@
 env
 .env
 cookies.pkl
+node_modules
