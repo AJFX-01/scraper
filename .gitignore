@@ -2,3 +2,4 @@ env
 .env
 cookies.pkl
 node_modules
+.wwebjs_cache
