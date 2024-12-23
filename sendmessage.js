@@ -47,10 +47,11 @@
 
 const { Client } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const fs = require('fs');
 
 const client = new Client({
     puppeteer: {
-        headless: true, // Runs the browser in headless mode (no UI)
+        headless: false, // Runs the browser in headless mode (no UI)
     },
 });
 
@@ -62,12 +63,22 @@ client.on('ready', async () => {
     console.log('Client is ready!');
 
     // Fetch chats and list group names
-    const chats = await client.getChats();
-    chats.forEach((chat) => {
-        if (chat.isGroup) {
-            console.log(`Group Name: ${chat.name}, Group ID: ${chat.id._serialized}`);
-        }
-    });
+    try {
+      // Fetch chats and list group names
+      console.log('Client is ready2!');
+      const chats = await client.getChats();
+      console.log(chats);
+      // fs.write(chats, { small: true }, "chats.json");
+      fs.writeFileSync("chats.json", JSON.stringify(chats), 'utf8');
+      console.log('Client is ready2!');
+      chats.forEach((chat) => {
+          if (chat.isGroup) {
+              console.log(`Group Name: ${chat.name}, Group ID: ${chat.id._serialized}`);
+          }
+      });
+  } catch (error) {
+      console.error('An error occurred while fetching chats:', error);
+  }
 });
 
 client.initialize();
