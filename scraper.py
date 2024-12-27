@@ -44,7 +44,7 @@ def send_email_via_mailgun(otp_code):
     except Exception as e:
         print(f"An error occurred while sending email: {e}")
 
-def scraper():
+def scraper() -> str:
     # Selenium Configuration
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 50)
