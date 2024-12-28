@@ -3,4 +3,5 @@ env
 cookies.pkl
 node_modules
 .wwebjs_cache
-chats.json
+chats.json/
+test.html
