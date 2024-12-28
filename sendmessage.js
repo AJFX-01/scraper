@@ -2,11 +2,11 @@ require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 
 // Get command-line arguments
-const args = process.argv.slice(2);
-const groupId = args[0];
-const message = args[1];
+const args = process.argv.slice(1);
+const groupId = process.env.WHATSAPP_GROUP_ID;
+const message = args[0];
 
-if (!groupId || !message) {
+if (!message) {
     console.error("Error: Group ID and message are required.");
     process.exit(1);
 }
@@ -26,7 +26,7 @@ client.on('ready', async () => {
     console.log('Client is ready!');
     try {
         // Send the message to the specified group
-        await client.sendMessage(process.env.WHATSAPP_GROUP_ID, message);
+        await client.sendMessage(groupId, message);
         console.log(`Message sent to group: ${groupId}`);
         process.exit(0); // Exit the script after sending the message
     } catch (err) {

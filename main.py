@@ -3,7 +3,7 @@ from scraper import scraper
 
 def send_to_group(data):
   message = f"Hi, Group! Here's the lastest update from the dashboard\n\n{data}"
-  subprocess.run(["node", "send-group-message.js", message])
+  subprocess.run(["node", "sendmessage.js", message])
 
 def main():
   scraped_data = scraper()
