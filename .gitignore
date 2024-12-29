@@ -3,5 +3,8 @@ env
 cookies.pkl
 node_modules
 .wwebjs_cache
-chats.json/
+.wwebjs_auth
+chats.json
 test.html
+__pycache__
+.DS_Store

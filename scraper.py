@@ -48,6 +48,7 @@ def scraper():
     # Selenium Configuration
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 50)
+    messages = []
 
     # Login to the web app
     driver.get(os.getenv("TARGET_URL"))
@@ -115,7 +116,7 @@ def scraper():
                                 By.CSS_SELECTOR, "button").get_attribute("id")
                             print(f"Found button with id: {button_id}")
 
-                            if button_id == ("d2l-uid-22" or "d2l-uid-30"):
+                            if button_id == ("d2l-uid-22" or "d2l-uid-16" or "d2l-uid-30"):
                                 button = shadow_root.find_element(By.ID, button_id)
                                 button.click()
                                 print(f"Button {button_id} clicked successfully!")
@@ -144,8 +145,7 @@ def scraper():
                     # print(div1_class.get_attribute("innerHTML"))
                     # print("Dropdown div 1 content found.")
                     div2_class = wait.until(
-                        EC.presence_of_element_located
-                                            ((By.ID, "AB_DL_PH_Grades"))
+                        EC.presence_of_element_located((By.ID, "AB_DL_PH_Grades"))
                     )
                     print(div2_class.get_attribute("innerHTML"))
                     print("Dropdown div2 content found.")
@@ -161,17 +161,18 @@ def scraper():
                     print(f"Found {len(li_tags)} items."),
 
                     # Extract data for each item
-                    for i, li_tag in li_tags:
-                        messages = []
+                    for i, li_tag in enumerate(li_tags, start=1):
+                        
                         try:
                             title = li_tag.find_element(By.CLASS_NAME, "d2l-link").text
                             due_date = li_tag.find_element(By.CLASS_NAME, "vui-emphasis").text
                             print(f"Title: {title}, Due Date: {due_date}")
-                            messages.append(f"{ i + 1}. {title}, Due Date: {due_date}\n")
+                            messages.append(f"{i}. {title}, Due Date: {due_date}\n")
                         except NoSuchElementException as e:
                             print(f"Error extracting item details: {e}")
                             continue
                         messages.append(f"This is automated message")
+                    print(messages)
                     return messages
                 except TimeoutException:
                     print("Dropdown content not found.")

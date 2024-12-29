@@ -1,10 +1,12 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+
 
 // Get command-line arguments
 const args = process.argv.slice(1);
 const groupId = process.env.WHATSAPP_GROUP_ID;
-const message = args[0];
+const message = args[1];
 
 if (!message) {
     console.error("Error: Group ID and message are required.");
@@ -13,12 +15,15 @@ if (!message) {
 
 // Initialize the client with session management
 const client = new Client({
-    authStrategy: new LocalAuth()
+    // authStrategy: new LocalAuth(),
+    puppeteer: {
+        headless: false, // Runs the browser in headless mode (no UI)
+    },
 });
+
 
 client.on('qr', (qr) => {
     console.log('Please scan this QR code to authenticate:');
-    const qrcode = require('qrcode-terminal');
     qrcode.generate(qr, { small: true });
 });
 
@@ -26,9 +31,14 @@ client.on('ready', async () => {
     console.log('Client is ready!');
     try {
         // Send the message to the specified group
-        await client.sendMessage(groupId, message);
-        console.log(`Message sent to group: ${groupId}`);
-        process.exit(0); // Exit the script after sending the message
+        const res = await client.sendMessage(groupId, message);
+
+        if(res) {
+            console.log(`Message sent to group: ${groupId}`);
+        } else {
+            comsole.log('an error occured');
+        }
+        // process.exit(0); // Exit the script after sending the message
     } catch (err) {
         console.error(`Failed to send message: ${err.message}`);
         process.exit(1);
