@@ -44,7 +44,7 @@ def send_email_via_mailgun(otp_code):
     except Exception as e:
         print(f"An error occurred while sending email: {e}")
 
-def scraper() -> str:
+def scraper():
     # Selenium Configuration
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 50)
@@ -161,14 +161,18 @@ def scraper() -> str:
                     print(f"Found {len(li_tags)} items."),
 
                     # Extract data for each item
-                    for li_tag in li_tags:
+                    for i, li_tag in li_tags:
+                        messages = []
                         try:
                             title = li_tag.find_element(By.CLASS_NAME, "d2l-link").text
                             due_date = li_tag.find_element(By.CLASS_NAME, "vui-emphasis").text
                             print(f"Title: {title}, Due Date: {due_date}")
+                            messages.append(f"{ i + 1}. {title}, Due Date: {due_date}\n")
                         except NoSuchElementException as e:
                             print(f"Error extracting item details: {e}")
                             continue
+                        messages.append(f"This is automated message")
+                    return messages
                 except TimeoutException:
                     print("Dropdown content not found.")
                     break
@@ -176,58 +180,58 @@ def scraper() -> str:
                     print("No dropdown content found.")
                     break
                 # Scrape data from the dropdown
-                try:
-                    items = dropdown_content.find_element(
-                        By.CSS_SELECTOR, "ul.d2l-datalist li.dl2-datalist-item")
-                    print(items.get_attribute("outerHTML"))
-                    print("Items found.")
-                except TimeoutException:
-                    print("No items found.")
-                    break
-                except NoSuchElementException:
-                    print("No items found.")
-                    break
-                print(items)
-                # Check if items are found
-                if not items:
-                    print("No items found.")
-                else:
-                    print(f"Found {len(items)} items.")
-                    # Extract data for each item
-                    for item in items:
-                        try:
-                            # Extract title and due date
-                            title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
-                            due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
-                            print(f"Title: {title}, Due Date: {due_date}")
-                        except NoSuchElementException as e:
-                            print(f"Error extracting item details: {e}")
-                            continue
+                # try:
+                #     items = dropdown_content.find_element(
+                #         By.CSS_SELECTOR, "ul.d2l-datalist li.dl2-datalist-item")
+                #     print(items.get_attribute("outerHTML"))
+                #     print("Items found.")
+                # except TimeoutException:
+                #     print("No items found.")
+                #     break
+                # except NoSuchElementException:
+                #     print("No items found.")
+                #     break
+                # print(items)
+                # # Check if items are found
+                # if not items:
+                #     print("No items found.")
+                # else:
+                #     print(f"Found {len(items)} items.")
+                #     # Extract data for each item
+                #     for item in items:
+                #         try:
+                #             # Extract title and due date
+                #             title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
+                #             due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
+                #             print(f"Title: {title}, Due Date: {due_date}")
+                #         except NoSuchElementException as e:
+                #             print(f"Error extracting item details: {e}")
+                #             continue
 
-                    # Check the last item's fuzzy date
-                    try:
-                        last_item = items[-1]
-                        fuzzy_date = last_item.find_element(
-                            By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
-                        last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
-                        today = datetime.now().date()
+                #     # Check the last item's fuzzy date
+                #     try:
+                #         last_item = items[-1]
+                #         fuzzy_date = last_item.find_element(
+                #             By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
+                #         last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
+                #         today = datetime.now().date()
 
-                        if last_date != today:
-                            print("Last item is not from today. Stopping load more.")
-                            break
-                    except (IndexError, NoSuchElementException) as e:
-                        print(f"Error finding fuzzy date: {e}. Stopping load more.")
-                        break
+                #         if last_date != today:
+                #             print("Last item is not from today. Stopping load more.")
+                #             break
+                #     except (IndexError, NoSuchElementException) as e:
+                #         print(f"Error finding fuzzy date: {e}. Stopping load more.")
+                #         break
 
-                # Handle "Load More" button
-                try:
-                    load_more_button = driver.find_element(By.CLASS_NAME, "d2l-loadmore-pager")
-                    if load_more_button:
-                        print("Clicking 'Load More' button.")
-                        load_more_button.click()
-                except NoSuchElementException:
-                    print("No 'Load More' button found. Ending loop.")
-                    break
+                # # Handle "Load More" button
+                # try:
+                #     load_more_button = driver.find_element(By.CLASS_NAME, "d2l-loadmore-pager")
+                #     if load_more_button:
+                #         print("Clicking 'Load More' button.")
+                #         load_more_button.click()
+                # except NoSuchElementException:
+                #     print("No 'Load More' button found. Ending loop.")
+                #     break
 
             except Exception as e:
                 error_type = type(e).__name__
