@@ -120,7 +120,7 @@ def scraper():
                                 button = shadow_root.find_element(By.ID, button_id)
                                 button.click()
                                 print(f"Button {button_id} clicked successfully!")
-                                dropdown_found = True  
+                                dropdown_found = True 
                                 break
 
                         except Exception as inner_e:

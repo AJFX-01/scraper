@@ -35,7 +35,9 @@ def scraper():
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 50)
     messages = {}
-    item_index = 1 
+    item_index = 1
+    max_retries = 3  # Number of retries if "Load More" is not found
+    retry_count = 0 
 
     # Login to the web app
     driver.get(os.getenv("TARGET_URL"))
@@ -100,10 +102,10 @@ def scraper():
 
                             # Try to locate the button with a unique ID (e.g., 'd2l-uid-191')
                             button_id = shadow_root.find_element(
-                                By.CSS_SELECTOR, "button").get_attribute("id")
+                                By.CSS_SELECTOR, "button").get_attribute("aria-label")
                             print(f"Found button with id: {button_id}")
 
-                            if button_id == "button[aria-label='Update alerts']":
+                            if button_id == "Update alerts":
                                 # button = shadow_root.find_element(By.ID, button_id)
                                 button = shadow_root.find_element(By.CSS_SELECTOR,
                                                 "button[aria-label='Update alerts']")
@@ -139,8 +141,10 @@ def scraper():
                     while True:
                         try:
                             # Locate the "Load More" button
-                            load_more_button = div2_class.find_element(By.CLASS_NAME, "d2l-loadmore-pager")
+                            load_more_button = div2_class.find_element(By.CLASS_NAME,
+                                                                       "d2l-loadmore-pager")
                             has_more = True
+                            retry_count = 0
                         except NoSuchElementException:
                             has_more = False  # No "Load More" button found
                         
@@ -182,13 +186,20 @@ def scraper():
                         if has_more:
                             try:
                                 load_more_button.click()
-                                time.sleep(3)  # Wait for the new items to load
+                                time.sleep(8)  # Wait for the new items to load
+                            
                             except Exception as e:
                                 print(f"Error clicking 'Load More' button: {e}")
                                 break
                         else:
-                            print("No more items to load.")
-                            break
+                            if retry_count < max_retries:
+                                print(f"'Load More' button not found. Waiting for 60 seconds before retrying... (Attempt {retry_count + 1}/{max_retries})")
+                                time.sleep(30)
+                                retry_count += 1
+                                continue
+                            else:
+                                print("No more items to load.")
+                                break
 
                     print(messages)
                     return messages
