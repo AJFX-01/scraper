@@ -1,3 +1,4 @@
+""" script """
 import os
 from datetime import datetime
 import time
@@ -29,10 +30,12 @@ def get_shadow_root(driver, element):
 
 
 def scraper():
+    """Script Py"""
     # Selenium Configuration
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 50)
     messages = {}
+    item_index = 1 
 
     # Login to the web app
     driver.get(os.getenv("TARGET_URL"))
@@ -100,11 +103,13 @@ def scraper():
                                 By.CSS_SELECTOR, "button").get_attribute("id")
                             print(f"Found button with id: {button_id}")
 
-                            if button_id == ("d2l-uid-22" or "d2l-uid-16" or "d2l-uid-30"):
-                                button = shadow_root.find_element(By.ID, button_id)
+                            if button_id == "button[aria-label='Update alerts']":
+                                # button = shadow_root.find_element(By.ID, button_id)
+                                button = shadow_root.find_element(By.CSS_SELECTOR,
+                                                "button[aria-label='Update alerts']")
                                 button.click()
                                 print(f"Button {button_id} clicked successfully!")
-                                dropdown_found = True  
+                                dropdown_found = True
                                 break
 
                         except Exception as inner_e:
@@ -130,55 +135,61 @@ def scraper():
                     )
                     print(div2_class.get_attribute("innerHTML"))
                     print("Dropdown div2 content found.")
-                    try:
-                      load_more_button = div2_class.find_element(By.CLASS_NAME, "d2l-loadmore-pager")
-                      if (load_more_button) :
-                          for i in range(25):
-                              load_more_button.click()
-                              time.sleep(20)
-                          continue
-                      else:
-                          exit()
-                    except Exception as e:
-                        error_type = type(e).__name__
-                        print(f"An error of type '{error_type}' occurred: {e}")
-                    except NoSuchElementException as e:
-                      print(f"Error extracting item details: {e}")
                     
-                    div3_class = div2_class.find_element(By.CLASS_NAME, "d2l-datalist-container")
-                    print("Dropdown div 3 content found.")
-                    items = div2_class.find_element(
-                        By.CLASS_NAME, "vui-list")
-                    print(items.get_attribute("innerHTML"))
-                    print("Items found.")
-
-                    # Locate all <li> elements within the <ul>
-                    li_tags = items.find_elements(By.CLASS_NAME, "d2l-datalist-item")
-                    print(f"Found {len(li_tags)} items."),
-
-                    # Extract data for each item
-                    for i, li_tag in enumerate(li_tags, start=1):
-                        
+                    while True:
                         try:
-                            title = li_tag.find_element(By.CLASS_NAME, "d2l-link").text
-                            due_date = li_tag.find_element(By.CLASS_NAME, "vui-emphasis").text
-                            print(f"Title: {title}, Due Date: {due_date}")
-                            messages[i] = {"title": title, "duedate": due_date}
-                        except NoSuchElementException as e:
-                            print(f"Error extracting item details: {e}")
-                            continue
-                    
-                    #Save JSON
-                    with open("output.json", "w") as json_file:
-                        json.dump(messages, json_file, indent=4)
-                        print("Data saved to json.output")
-                    # Save CSV
-                    with open("output.csv", mode="w", newline="") as csv_file:
-                        writer = csv.writer(csv_file)
-                        writer.writerow(["No", "title", "duedate"])
-                        for index, details in messages.items():
-                            writer.writerow([index, details["title"], details["duedate"]])
-                        print("Data saved to output.csv")
+                            # Locate the "Load More" button
+                            load_more_button = div2_class.find_element(By.CLASS_NAME, "d2l-loadmore-pager")
+                            has_more = True
+                        except NoSuchElementException:
+                            has_more = False  # No "Load More" button found
+                        
+                        # Fetch the list items
+                        try:
+                            items = div2_class.find_element(By.CLASS_NAME, "vui-list")
+                            li_tags = items.find_elements(By.CLASS_NAME, "d2l-datalist-item")
+                            print(f"Found {len(li_tags)} items.")
+
+                            for li_tag in li_tags:
+                                try:
+                                    title = li_tag.find_element(By.CLASS_NAME, "d2l-link").text
+                                    due_date = li_tag.find_element(By.CLASS_NAME, "vui-emphasis").text
+                                    print(f"Title: {title}, Due Date: {due_date}")
+                                    messages[item_index] = {"title": title, "duedate": due_date}
+                                    item_index += 1
+                                except NoSuchElementException as e:
+                                    print(f"Error extracting item details: {e}")
+                                    continue
+
+                            # Save to JSON after each batch
+                            with open("output.json", "w") as json_file:
+                                json.dump(messages, json_file, indent=4)
+                                print("Data saved to output.json")
+
+                            # Save to CSV after each batch
+                            with open("output.csv", mode="w", newline="") as csv_file:
+                                writer = csv.writer(csv_file)
+                                writer.writerow(["No", "title", "duedate"])
+                                for index, details in messages.items():
+                                    writer.writerow([index, details["title"], details["duedate"]])
+                                print("Data saved to output.csv")
+                            
+                        except Exception as e:
+                            error_type = type(e).__name__
+                            print(f"An error of type '{error_type}' occurred: {e}")
+
+                        # If "Load More" button exists, click it and wait for more items to load
+                        if has_more:
+                            try:
+                                load_more_button.click()
+                                time.sleep(3)  # Wait for the new items to load
+                            except Exception as e:
+                                print(f"Error clicking 'Load More' button: {e}")
+                                break
+                        else:
+                            print("No more items to load.")
+                            break
+
                     print(messages)
                     return messages
                 except TimeoutException:
