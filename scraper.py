@@ -1,6 +1,7 @@
 import os
 import traceback
 import time
+import csv
 import requests
 from datetime import datetime
 from selenium import webdriver
@@ -48,7 +49,7 @@ def scraper():
     # Selenium Configuration
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 50)
-    messages = []
+    messages = {}
 
     # Login to the web app
     driver.get(os.getenv("TARGET_URL"))
@@ -113,14 +114,15 @@ def scraper():
 
                             # Try to locate the button with a unique ID (e.g., 'd2l-uid-191')
                             button_id = shadow_root.find_element(
-                                By.CSS_SELECTOR, "button").get_attribute("id")
+                                By.CSS_SELECTOR, "button").get_attribute("aria-label")
                             print(f"Found button with id: {button_id}")
 
-                            if button_id == ("d2l-uid-22" or "d2l-uid-16" or "d2l-uid-30"):
-                                button = shadow_root.find_element(By.ID, button_id)
+                            if button_id == "Update alerts":
+                                button = shadow_root.find_element(By.ID,
+                                            "button[aria-label='Update alerts']")
                                 button.click()
                                 print(f"Button {button_id} clicked successfully!")
-                                dropdown_found = True 
+                                dropdown_found = True
                                 break
 
                         except Exception as inner_e:
@@ -164,12 +166,17 @@ def scraper():
                             title = li_tag.find_element(By.CLASS_NAME, "d2l-link").text
                             due_date = li_tag.find_element(By.CLASS_NAME, "vui-emphasis").text
                             print(f"Title: {title}, Due Date: {due_date}")
-                            messages.append(f"{i}. {title}, Due Date: {due_date}\n")
+                            messages[i] = {"title": title, "duedate": due_date}
                         except NoSuchElementException as e:
                             print(f"Error extracting item details: {e}")
                             continue
-                        messages.append(f"This is automated message")
                     print(messages)
+                    with open("messages.csv", mode="w", newline="", encoding="utf-8") as csv_file:
+                        writer = csv.writer(csv_file)
+                        writer.writerow(["No", "title", "duedate"])
+                        for i,  details in messages.items():
+                            writer.writerow([i, details["title"], details["duedate"]])
+                        print("Data saved to output.csv")
                     return messages
                 except TimeoutException:
                     print("Dropdown content not found.")
@@ -177,60 +184,6 @@ def scraper():
                 except NoSuchElementException:
                     print("No dropdown content found.")
                     break
-                # Scrape data from the dropdown
-                # try:
-                #     items = dropdown_content.find_element(
-                #         By.CSS_SELECTOR, "ul.d2l-datalist li.dl2-datalist-item")
-                #     print(items.get_attribute("outerHTML"))
-                #     print("Items found.")
-                # except TimeoutException:
-                #     print("No items found.")
-                #     break
-                # except NoSuchElementException:
-                #     print("No items found.")
-                #     break
-                # print(items)
-                # # Check if items are found
-                # if not items:
-                #     print("No items found.")
-                # else:
-                #     print(f"Found {len(items)} items.")
-                #     # Extract data for each item
-                #     for item in items:
-                #         try:
-                #             # Extract title and due date
-                #             title = item.find_element(By.CSS_SELECTOR, "a.dl2-link").text
-                #             due_date = item.find_element(By.CSS_SELECTOR, "span.vui-emphasis").text
-                #             print(f"Title: {title}, Due Date: {due_date}")
-                #         except NoSuchElementException as e:
-                #             print(f"Error extracting item details: {e}")
-                #             continue
-
-                #     # Check the last item's fuzzy date
-                #     try:
-                #         last_item = items[-1]
-                #         fuzzy_date = last_item.find_element(
-                #             By.CSS_SELECTOR, "abbr.d2l-fuzzy").get_attribute("title")
-                #         last_date = datetime.strptime(fuzzy_date, "%B %d at %I:%M %p").date()
-                #         today = datetime.now().date()
-
-                #         if last_date != today:
-                #             print("Last item is not from today. Stopping load more.")
-                #             break
-                #     except (IndexError, NoSuchElementException) as e:
-                #         print(f"Error finding fuzzy date: {e}. Stopping load more.")
-                #         break
-
-                # # Handle "Load More" button
-                # try:
-                #     load_more_button = driver.find_element(By.CLASS_NAME, "d2l-loadmore-pager")
-                #     if load_more_button:
-                #         print("Clicking 'Load More' button.")
-                #         load_more_button.click()
-                # except NoSuchElementException:
-                #     print("No 'Load More' button found. Ending loop.")
-                #     break
-
             except Exception as e:
                 error_type = type(e).__name__
                 print(f"An error of type '{error_type}' occurred: {e}")
