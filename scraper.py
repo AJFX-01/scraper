@@ -195,6 +195,5 @@ def scraper():
             error_type = type(e).__name__
             print(f"An error of type '{error_type}' occurred: {e}")
             # Optionally log the full stack trace
-            import traceback
             traceback.print_exc()
             break
