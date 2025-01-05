@@ -141,9 +141,6 @@ def scraper():
                     )
                     print(dropdown_content.get_attribute("innerHTML"))
                     print("Dropdown content found.")
-                    # div1_class = dropdown_content.find_element(By.CLASS_NAME, "d2l-placeholder")
-                    # print(div1_class.get_attribute("innerHTML"))
-                    # print("Dropdown div 1 content found.")
                     div2_class = wait.until(
                         EC.presence_of_element_located((By.ID, "AB_DL_PH_Grades"))
                     )

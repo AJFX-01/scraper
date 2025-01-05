@@ -125,7 +125,6 @@ def scraper():
 
             # Scrape data from the dropdown
             try:
-
                 try:
                     dropdown_content = wait.until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "d2l-dropdown-content"))
@@ -137,7 +136,6 @@ def scraper():
                     )
                     print(div2_class.get_attribute("innerHTML"))
                     print("Dropdown div2 content found.")
-                    
                     while True:
                         try:
                             # Locate the "Load More" button
@@ -147,7 +145,6 @@ def scraper():
                             retry_count = 0
                         except NoSuchElementException:
                             has_more = False  # No "Load More" button found
-                        
                         # Fetch the list items
                         try:
                             items = div2_class.find_element(By.CLASS_NAME, "vui-list")
@@ -157,7 +154,8 @@ def scraper():
                             for li_tag in li_tags:
                                 try:
                                     title = li_tag.find_element(By.CLASS_NAME, "d2l-link").text
-                                    due_date = li_tag.find_element(By.CLASS_NAME, "vui-emphasis").text
+                                    due_date = li_tag.find_element(
+                                        By.CLASS_NAME, "vui-emphasis").text
                                     print(f"Title: {title}, Due Date: {due_date}")
                                     messages[item_index] = {"title": title, "duedate": due_date}
                                     item_index += 1
