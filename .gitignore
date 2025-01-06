@@ -10,3 +10,6 @@ __pycache__
 .DS_Store
 output.csv
 output.json
+test.csv
+test2.csv
+upcoming.csv

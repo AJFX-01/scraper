@@ -82,6 +82,56 @@ def filter_csv(data_file : str) -> str:
                 writer.writerow(row)
     os.replace(temp_file, data_file)
 
+def remove_duplicates(base_file: str, new_file: str) -> str:
+    """Merge base_file and new_file without duplicates, updating base_file only with unique rows.
+    Return new rows found as a string without the 'No' column."""
+    temp_output_file = "merged_output.csv"
+    base_data = set()
+    new_data = set()
+    fieldnames = []
+
+    # Load data from base_file
+    if os.path.exists(base_file):
+        with open(base_file, mode="r", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            fieldnames = reader.fieldnames
+            if not fieldnames or "No" not in fieldnames:
+                return "Invalid CSV format in base file."
+            for row in reader:
+                # Exclude "No" column when storing data
+                base_data.add(tuple(row[col] for col in fieldnames if col != "No"))
+
+    # Load data from new_file
+    if os.path.exists(new_file):
+        with open(new_file, mode="r", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            if not reader.fieldnames or reader.fieldnames != fieldnames:
+                return "CSV headers do not match between files."
+            for row in reader:
+                # Exclude "No" column when storing data
+                new_data.add(tuple(row[col] for col in fieldnames if col != "No"))
+
+    # Find unique rows in new_file that are not in base_file
+    unique_new_data = new_data - base_data
+    if not unique_new_data:
+        return "No new message"
+
+    # Merge base data and unique new data
+    all_data = base_data | unique_new_data
+
+    # Write merged data back to base_file
+    with open(temp_output_file, mode="w", newline="", encoding="utf-8") as outfile:
+        writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for index, row in enumerate(all_data, start=1):
+            writer.writerow(dict(zip(fieldnames, [str(index)] + list(row))))
+
+    os.replace(temp_output_file, base_file)
+
+    # Prepare output string of new rows without 'No' column
+    result_lines = ["\n".join(", ".join(row) for row in unique_new_data)]
+    return "\n".join(result_lines)
+
 def send_upcoming_duedate() -> str:
     """ send upcoming due dates """
     # we have a background task runing every morning to chek the upcoming
@@ -93,7 +143,8 @@ def send_upcoming_duedate() -> str:
     return "due "
 
 def main():
-    scraper()
+    """ where the function runs """
+    save_duedate("test.csv", "upcoming.csv")
     # scraped_data = scraper()
     # formatted_data = "\n".join(scraped_data)
     # send_to_group(formatted_data)
@@ -103,5 +154,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
