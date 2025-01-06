@@ -3,7 +3,7 @@
 import os
 import re
 from datetime import datetime, timedelta
-import subprocess
+import requests
 import csv
 import pytz
 from .scraper import scraper
@@ -210,11 +210,14 @@ def send_message() -> str:
 def main():
     """ where the function runs """
     # save_duedate("due.csv", "upcoming.csv")
-    info = get_upcoming_duedate("upcoming.csv")
-    print(info)
+    # info = get_upcoming_duedate("upcoming.csv")
+    # print(info)
     # scraped_data = scraper()
     # formatted_data = "\n".join(scraped_data)
     # send_to_group(formatted_data)
+    message = send_message()
+    response = requests.post("", json={"message": message})
+    print(f"Response from Node.js server: {response.text}")
 
 
 
