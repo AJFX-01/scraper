@@ -2,9 +2,10 @@
 
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 import subprocess
 import csv
+import pytz
 # from .scraper import scraper
 from scrpt import scraper
 
@@ -22,6 +23,9 @@ def save_duedate(input_csv: str, output_csv: str):
         we save update the current csv called upcoming duedate.csv
     """
     existing_rows = set()
+    date_format_without_tz = "%A, %B %d, %Y %I:%M %p"
+    timezone = pytz.timezone('US/Eastern')
+
     # Load the exisiting data to avoid duplicates
     if os.path.exists(output_csv):
         with open(output_csv, mode="r", encoding="utf-8") as exisiting_file:
@@ -43,18 +47,25 @@ def save_duedate(input_csv: str, output_csv: str):
                     title)
                 if date_match:
                     due_date_str = date_match.group(0)
+                    date_part, tz_abbr = due_date_str.rsplit(' ', 1)
                     try:
                         # Parse the data
-                        print(due_date_str)
-                        due_date_obj = datetime.strptime(due_date_str, "%B %d, %Y")
-                        if due_date_obj >= datetime.now():
-                            row_tuple = (row["No"], title, due_date_str)
+                        due_date_obj = datetime.strptime(date_part, date_format_without_tz)
+                        if due_date_obj <= datetime.now():
+                            due_date_with_tz = timezone.localize(due_date_obj)
+                            print(due_date_with_tz)
+                            row_tuple = (row["No"], title, due_date_with_tz)
                             if row_tuple not in existing_rows:
                                 filtered_rows.append({"No": row["No"], "title" : title,
-                                                      "duedate":due_date_str})
+                                                      "duedate":due_date_with_tz})
                                 existing_rows.add(row_tuple)
-                    except ValueError:
-                        print(f"Skipping row with invalid date: {title}")
+                            else:
+                                print("error occured in tuple")
+                        else:
+                            print("No upcoming due dates")
+                            return "No upcoming dueDates"
+                    except ValueError as val:
+                        print(f"Error: {val}")
                 else:
                     print("No date matches found")
 
@@ -135,15 +146,40 @@ def remove_duplicates(base_file: str, new_file: str) -> str:
     result_lines = ["\n".join(", ".join(row) for row in unique_new_data)]
     return "\n".join(result_lines)
 
-def send_upcoming_duedate() -> str:
-    """ send upcoming due dates """
-    # we have a background task runing every morning to chek the upcoming
-    # due dates we have in a csv
-    # if it upcoming in 3 days times we send it
-    # also we do the same for 2 says times
-    # also we do the same for 1 days times
-    # and finally on the D-day
-    return "due "
+def send_upcoming_duedate(upcoming_file: str) -> str:
+    """Check upcoming dates in a CSV file and return titles for rows matching upcoming due dates."""
+    eastern = pytz.timezone("US/Eastern")  # Timezone adjustment
+    now = datetime.now(eastern)
+    dates_to_check = {
+        "3 days": now + timedelta(days=3),
+        "2 days": now + timedelta(days=2),
+        "1 day": now + timedelta(days=1),
+        "D-day": now
+    }
+    matching_titles = []
+
+    try:
+        with open(upcoming_file, mode="r", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            if "duedate" not in reader.fieldnames or "title" not in reader.fieldnames:
+                return "Invalid CSV format. 'duedate' and 'title' columns are required."
+            for row in reader:
+                try:
+                    due_date = datetime.fromisoformat(row["duedate"])  # Expecting ISO 8601 format
+                except ValueError:
+                    continue  # Skip rows with invalid date format
+
+                for label, check_date in dates_to_check.items():
+                    if due_date.date() == check_date.date():
+                        matching_titles.append(f"{label}: {row['title']}")
+                        break
+
+        if matching_titles:
+            return "\n".join(matching_titles)
+        else:
+            return "No upcoming due dates found matching the specified intervals."
+    except FileNotFoundError:
+        return f"File '{upcoming_file}' not found."
 
 def main():
     """ where the function runs """
