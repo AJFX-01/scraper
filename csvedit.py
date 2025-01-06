@@ -1,22 +1,10 @@
 import csv
+import re
 
-# Input and output file paths
-file_path = "output4.csv"  # Use the file where rows have already been removed
+text = "Name of team members, problem statement, two potential ideas and completed Ideaspace worksheet due on Wednesday, November 6, 2024 11:59 PM EST."
+match = re.search(r'\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}(?: \d{1,2}:\d{2} (?:AM|PM) [A-Z]+)?', text)
 
-# Read the file and update the "No" column
-with open(file_path, mode="r") as infile:
-    reader = csv.DictReader(infile)
-    rows = list(reader)  # Load all rows into memory
-    fieldnames = reader.fieldnames  # Get column headers
-
-# Update the "No" column sequentially
-for i, row in enumerate(rows, start=1):
-    row['No'] = i
-
-# Write the updated rows back to the same file
-with open(file_path, mode="w", newline="") as outfile:
-    writer = csv.DictWriter(outfile, fieldnames=fieldnames)
-    writer.writeheader()  # Write the header
-    writer.writerows(rows)  # Write the updated rows
-
-print(f"'No' column updated sequentially in '{file_path}'.")
+if match:
+    print("Matched date:", match.group())
+else:
+    print("No match found.")

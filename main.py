@@ -22,7 +22,7 @@ def save_duedate(input_csv: str, output_csv: str):
         we save update the current csv called upcoming duedate.csv
     """
     existing_rows = set()
-    # Load the exisiting data to vaiod duplicates
+    # Load the exisiting data to avoid duplicates
     if os.path.exists(output_csv):
         with open(output_csv, mode="r", encoding="utf-8") as exisiting_file:
             exisiting_reader = csv.DictReader(exisiting_file)
@@ -35,16 +35,17 @@ def save_duedate(input_csv: str, output_csv: str):
 
         filtered_rows = []
         for row in reader:
-            title = row.get('title', '').lower()
+            title = row.get('title', '').strip()
             if 'due' in title.lower():
                 # Extract the date from the file using regex pattern
                 date_match = re.search(
-                    r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}',
+                    r'\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}(?: \d{1,2}:\d{2} (?:AM|PM) [A-Z]+)?',
                     title)
                 if date_match:
                     due_date_str = date_match.group(0)
                     try:
-                        # Parse the date
+                        # Parse the data
+                        print(due_date_str)
                         due_date_obj = datetime.strptime(due_date_str, "%B %d, %Y")
                         if due_date_obj >= datetime.now():
                             row_tuple = (row["No"], title, due_date_str)
@@ -54,6 +55,8 @@ def save_duedate(input_csv: str, output_csv: str):
                                 existing_rows.add(row_tuple)
                     except ValueError:
                         print(f"Skipping row with invalid date: {title}")
+                else:
+                    print("No date matches found")
 
     # Append new Data to output CSV
     with open(output_csv, mode="a", encoding="utf-8") as outfile:
@@ -144,7 +147,7 @@ def send_upcoming_duedate() -> str:
 
 def main():
     """ where the function runs """
-    save_duedate("test.csv", "upcoming.csv")
+    save_duedate("due.csv", "upcoming.csv")
     # scraped_data = scraper()
     # formatted_data = "\n".join(scraped_data)
     # send_to_group(formatted_data)
