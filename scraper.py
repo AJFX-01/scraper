@@ -46,6 +46,7 @@ def send_email_via_mailgun(otp_code):
         print(f"An error occurred while sending email: {e}")
 
 def scraper():
+    """ The main scrapping code """
     # Selenium Configuration
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 50)
@@ -147,9 +148,6 @@ def scraper():
                         EC.presence_of_element_located((By.ID, "AB_DL_PH_Grades"))
                     )
                     print(div2_class.get_attribute("innerHTML"))
-                    print("Dropdown div2 content found.")
-                    div3_class = div2_class.find_element(By.CLASS_NAME, "d2l-datalist-container")
-                    print("Dropdown div 3 content found.")
                     items = div2_class.find_element(
                         By.CLASS_NAME, "vui-list")
                     print(items.get_attribute("innerHTML"))
@@ -157,7 +155,6 @@ def scraper():
 
                     # Locate all <li> elements within the <ul>
                     li_tags = items.find_elements(By.CLASS_NAME, "d2l-datalist-item")
-                    print(f"Found {len(li_tags)} items."),
 
                     # Extract data for each item
                     for i, li_tag in enumerate(li_tags, start=1):
@@ -176,7 +173,7 @@ def scraper():
                         writer.writerow(["No", "title", "duedate"])
                         for i,  details in messages.items():
                             writer.writerow([i, details["title"], details["duedate"]])
-                        print("Data saved to output.csv")
+                        print("Data saved to messages.csv")
                     return messages
                 except TimeoutException:
                     print("Dropdown content not found.")

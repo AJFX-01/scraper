@@ -6,8 +6,7 @@ from datetime import datetime, timedelta
 import subprocess
 import csv
 import pytz
-# from .scraper import scraper
-from scrpt import scraper
+from .scraper import scraper
 
 # def send_to_group(data):
 #   message = f"Hi, Guys!\n{data}"
@@ -146,7 +145,7 @@ def remove_duplicates(base_file: str, new_file: str) -> str:
     result_lines = ["\n".join(", ".join(row) for row in unique_new_data)]
     return "\n".join(result_lines)
 
-def send_upcoming_duedate(upcoming_file: str) -> str:
+def get_upcoming_duedate(upcoming_file: str) -> str:
     """Check upcoming dates in a CSV file and return titles for rows matching upcoming due dates."""
     eastern = pytz.timezone("US/Eastern")  # Timezone adjustment
     now = datetime.now(eastern)
@@ -183,10 +182,35 @@ def send_upcoming_duedate(upcoming_file: str) -> str:
     except FileNotFoundError:
         return f"File '{upcoming_file}' not found."
 
+
+def send_message() -> str:
+    """ the background message is being sent """
+    try:
+        messages = scraper()
+        if messages:
+            filter_csv("messages.csv")
+            save_duedate("message.csv", "upcoming.csv")
+            message_m1 = remove_duplicates("oldmessages.csv", "messages.csv")
+            message_m2 = get_upcoming_duedate("upcoming.csv")
+
+            if message_m1 and message_m2:
+                return (
+                    f"Hi Guys!\nNew Updates Alert\n{message_m1}\n\n \
+                      Fast Approaching Due Dates\n{message_m2})"
+                    )
+            else:
+                print("An error occured")
+                return "An occured getting new updates"
+        else:
+            return "Something went wrong, getting new messages"
+
+    except Exception as e:
+        return f"Error: {e}"
+
 def main():
     """ where the function runs """
     # save_duedate("due.csv", "upcoming.csv")
-    info = send_upcoming_duedate("upcoming.csv")
+    info = get_upcoming_duedate("upcoming.csv")
     print(info)
     # scraped_data = scraper()
     # formatted_data = "\n".join(scraped_data)
