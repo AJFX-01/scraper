@@ -151,10 +151,10 @@ def send_upcoming_duedate(upcoming_file: str) -> str:
     eastern = pytz.timezone("US/Eastern")  # Timezone adjustment
     now = datetime.now(eastern)
     dates_to_check = {
-        "3 days": now + timedelta(days=3),
-        "2 days": now + timedelta(days=2),
-        "1 day": now + timedelta(days=1),
-        "D-day": now
+        "Due in 3 days": now + timedelta(days=3),
+        "Due in 2 days": now + timedelta(days=2),
+        "Due tomorrow": now + timedelta(days=1),
+        "Due today": now
     }
     matching_titles = []
 
@@ -166,24 +166,28 @@ def send_upcoming_duedate(upcoming_file: str) -> str:
             for row in reader:
                 try:
                     due_date = datetime.fromisoformat(row["duedate"])  # Expecting ISO 8601 format
-                except ValueError:
+                except ValueError as val:
+                    print(val)
                     continue  # Skip rows with invalid date format
 
                 for label, check_date in dates_to_check.items():
                     if due_date.date() == check_date.date():
+                        print(due_date.date())
                         matching_titles.append(f"{label}: {row['title']}")
                         break
 
         if matching_titles:
             return "\n".join(matching_titles)
         else:
-            return "No upcoming due dates found matching the specified intervals."
+            return "No upcoming due dates"
     except FileNotFoundError:
         return f"File '{upcoming_file}' not found."
 
 def main():
     """ where the function runs """
-    save_duedate("due.csv", "upcoming.csv")
+    # save_duedate("due.csv", "upcoming.csv")
+    info = send_upcoming_duedate("upcoming.csv")
+    print(info)
     # scraped_data = scraper()
     # formatted_data = "\n".join(scraped_data)
     # send_to_group(formatted_data)
