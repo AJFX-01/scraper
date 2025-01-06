@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Client } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const express = require('express');
@@ -12,6 +13,10 @@ const client = new Client({
 const app = express();
 app.use(bodyParser.json());
 
+const groupId = process.env.WHATSAPP_GROUP_ID;
+const PORT = process.env.PORT;
+
+
 // Generate QR Code
 client.on('qr', (qr) => {
     qrcode.generate(qr, { small: true });
@@ -24,11 +29,10 @@ client.on('ready', () => {
 
 // Endpoint to receive messages from Python
 app.post('/send', async (req, res) => {
-    const { message } = req.body;
-    const chatId = 'GROUP_ID@broadcast'; // Replace with your group's ID
+    const { message } = req.body; // Replace with your group's ID
 
     try {
-        await client.sendMessage(chatId, message);
+        await client.sendMessage(groupId, message);
         console.log('Message sent:', message);
         res.status(200).send('Message sent successfully');
     } catch (error) {
@@ -38,8 +42,8 @@ app.post('/send', async (req, res) => {
 });
 
 // Start the Express server
-app.listen(3000, () => {
-    console.log('Node.js server is running on port 3000');
+app.listen(PORT, () => {
+    console.log(`Node.js server is running on port ${PORT}`);
 });
 
 // Initialize WhatsApp client

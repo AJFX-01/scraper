@@ -12,6 +12,9 @@ from .scraper import scraper
 #   message = f"Hi, Guys!\n{data}"
 #   subprocess.run(["node", "sendmessage.js", message])
 
+BASE_URL = os.getenv("BASEURL")
+PORT = os.getenv("PORT")
+
 def save_duedate(input_csv: str, output_csv: str):
     """ Store Upcoming Due Dates 
         Into the upcoming.csv
@@ -216,7 +219,7 @@ def main():
     # formatted_data = "\n".join(scraped_data)
     # send_to_group(formatted_data)
     message = send_message()
-    response = requests.post("", json={"message": message})
+    response = requests.post(f"{BASE_URL}:{PORT}/send", json={"message": message})
     print(f"Response from Node.js server: {response.text}")
 
 
